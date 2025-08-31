@@ -55,15 +55,113 @@ function handleFormSubmission(form) {
         return;
     }
     
-    // Simulate form submission
     showLoadingState(true);
     
-    // Simulate API call delay
-    setTimeout(() => {
+    // Choose your preferred method:
+    // Method 1: Formspree (recommended for beginners)
+    submitToFormspree(formData, form);
+    
+    // Method 2: Netlify Forms (uncomment if using Netlify)
+    // submitToNetlify(formData, form);
+    
+    // Method 3: EmailJS (uncomment if using EmailJS)
+    // submitToEmailJS(name, email, message, form);
+    
+    // Method 4: Custom backend API (uncomment if you have your own server)
+    // submitToCustomAPI(formData, form);
+}
+
+// Method 1: Formspree - Easy setup, no backend needed
+function submitToFormspree(formData, form) {
+    // Replace 'your-form-id' with your actual Formspree form ID
+    fetch('https://formspree.io/f/xvgbrgbd', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        showLoadingState(false);
+        if (response.ok) {
+            showNotification('Thank you for your message! We\'ll get back to you soon. 💕', 'success');
+            form.reset();
+        } else {
+            throw new Error('Network response was not ok');
+        }
+    })
+    .catch(error => {
+        showLoadingState(false);
+        showNotification('Sorry, there was an error sending your message. Please try again.', 'error');
+        console.error('Error:', error);
+    });
+}
+
+// Method 2: Netlify Forms - If hosting on Netlify
+function submitToNetlify(formData, form) {
+    fetch('/', {
+        method: 'POST',
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(formData).toString()
+    })
+    .then(() => {
         showLoadingState(false);
         showNotification('Thank you for your message! We\'ll get back to you soon. 💕', 'success');
         form.reset();
-    }, 1500);
+    })
+    .catch(error => {
+        showLoadingState(false);
+        showNotification('Sorry, there was an error sending your message. Please try again.', 'error');
+        console.error('Error:', error);
+    });
+}
+
+// Method 3: EmailJS - Send emails directly from frontend
+function submitToEmailJS(name, email, message, form) {
+    // You need to include EmailJS library and initialize it
+    // Add this to your HTML: <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    
+    const templateParams = {
+        from_name: name,
+        from_email: email,
+        message: message,
+        to_name: 'Hendry & Sari'
+    };
+    
+    emailjs.send('your-service-id', 'your-template-id', templateParams)
+        .then(() => {
+            showLoadingState(false);
+            showNotification('Thank you for your message! We\'ll get back to you soon. 💕', 'success');
+            form.reset();
+        })
+        .catch(error => {
+            showLoadingState(false);
+            showNotification('Sorry, there was an error sending your message. Please try again.', 'error');
+            console.error('EmailJS error:', error);
+        });
+}
+
+// Method 4: Custom API - If you have your own backend
+function submitToCustomAPI(formData, form) {
+    fetch('/api/contact', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        showLoadingState(false);
+        if (data.success) {
+            showNotification('Thank you for your message! We\'ll get back to you soon. 💕', 'success');
+            form.reset();
+        } else {
+            throw new Error(data.message || 'Unknown error');
+        }
+    })
+    .catch(error => {
+        showLoadingState(false);
+        showNotification('Sorry, there was an error sending your message. Please try again.', 'error');
+        console.error('API error:', error);
+    });
 }
 
 function isValidEmail(email) {
