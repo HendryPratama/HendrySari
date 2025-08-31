@@ -8,6 +8,8 @@ function initializePortfolio() {
     setupContactForm();
     setupScrollEffects();
     setupButterflyAnimation();
+    loadDisplayedMessages();
+    setupLoadMoreButton();
 }
 
 // Smooth scrolling for navigation links
@@ -84,8 +86,16 @@ function submitToFormspree(formData, form) {
     .then(response => {
         showLoadingState(false);
         if (response.ok) {
+            // Save message locally for display
+            const name = formData.get('name');
+            const message = formData.get('message');
+            saveMessageLocally(name, message);
+            
             showNotification('Thank you for your message! We\'ll get back to you soon. 💕', 'success');
             form.reset();
+            
+            // Refresh displayed messages
+            loadDisplayedMessages();
         } else {
             throw new Error('Network response was not ok');
         }
@@ -370,6 +380,174 @@ function setupLazyLoading() {
     });
     
     images.forEach(img => imageObserver.observe(img));
+}
+
+// Message Display System
+let displayedMessagesCount = 0;
+const messagesPerPage = 6;
+
+function saveMessageLocally(name, message) {
+    const messages = getStoredMessages();
+    const newMessage = {
+        id: Date.now(),
+        name: name,
+        message: message,
+        date: new Date().toISOString(),
+        approved: true // You can add moderation later
+    };
+    
+    messages.unshift(newMessage); // Add to beginning
+    
+    // Keep only last 50 messages to prevent storage bloat
+    if (messages.length > 50) {
+        messages.splice(50);
+    }
+    
+    // Store in memory (you can change this to localStorage if needed)
+    window.portfolioMessages = messages;
+}
+
+function getStoredMessages() {
+    // Using in-memory storage (resets on page reload)
+    // You can change this to localStorage for persistence
+    if (!window.portfolioMessages) {
+        window.portfolioMessages = [
+            // Add some sample messages for demonstration
+            {
+                id: 1,
+                name: "Sarah Johnson",
+                message: "Your portfolio is absolutely stunning! The butterfly theme is so elegant and romantic. Can't wait to see more of your work together!",
+                date: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+                approved: true
+            },
+            {
+                id: 2,
+                name: "Mike Chen",
+                message: "Amazing collaboration between you two! The design is clean, professional, and the interactive elements are delightful.",
+                date: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+                approved: true
+            },
+            {
+                id: 3,
+                name: "Emily Rodriguez",
+                message: "Love the romantic yet professional aesthetic. You've created something truly special that showcases both of your talents beautifully.",
+                date: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
+                approved: true
+            }
+        ];
+    }
+    return window.portfolioMessages;
+}
+
+function loadDisplayedMessages() {
+    const messagesGrid = document.getElementById('messagesGrid');
+    const loadMoreContainer = document.querySelector('.load-more-container');
+    const messages = getStoredMessages().filter(msg => msg.approved);
+    
+    // Clear existing messages
+    messagesGrid.innerHTML = '';
+    displayedMessagesCount = 0;
+    
+    if (messages.length === 0) {
+        // Show placeholder
+        messagesGrid.innerHTML = `
+            <div class="message-card placeholder">
+                <div class="message-content">
+                    <p>"No messages yet. Be the first to send us a message!"</p>
+                </div>
+                <div class="message-author">
+                    <span class="author-name">- Waiting for you 💕</span>
+                </div>
+            </div>
+        `;
+        loadMoreContainer.style.display = 'none';
+        return;
+    }
+    
+    // Load first batch
+    loadMoreMessages();
+}
+
+function loadMoreMessages() {
+    const messagesGrid = document.getElementById('messagesGrid');
+    const loadMoreContainer = document.querySelector('.load-more-container');
+    const messages = getStoredMessages().filter(msg => msg.approved);
+    
+    const messagesToShow = messages.slice(displayedMessagesCount, displayedMessagesCount + messagesPerPage);
+    
+    messagesToShow.forEach((message, index) => {
+        setTimeout(() => {
+            const messageCard = createMessageCard(message);
+            messagesGrid.appendChild(messageCard);
+        }, index * 100); // Stagger the animation
+    });
+    
+    displayedMessagesCount += messagesToShow.length;
+    
+    // Show/hide load more button
+    if (displayedMessagesCount >= messages.length) {
+        loadMoreContainer.style.display = 'none';
+    } else {
+        loadMoreContainer.style.display = 'block';
+    }
+}
+
+function createMessageCard(message) {
+    const messageCard = document.createElement('div');
+    messageCard.className = 'message-card message-animation';
+    
+    const messageDate = new Date(message.date);
+    const formattedDate = messageDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+    });
+    
+    messageCard.innerHTML = `
+        <div class="message-content">
+            <p>${escapeHtml(message.message)}</p>
+        </div>
+        <div class="message-author">
+            <span class="author-name">- ${escapeHtml(message.name)}</span>
+            <span class="message-date">${formattedDate}</span>
+        </div>
+    `;
+    
+    return messageCard;
+}
+
+function setupLoadMoreButton() {
+    const loadMoreButton = document.getElementById('loadMoreMessages');
+    if (loadMoreButton) {
+        loadMoreButton.addEventListener('click', loadMoreMessages);
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Enhanced scroll animations to include message cards
+function setupScrollAnimations() {
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('animate-in');
+            }
+        });
+    }, observerOptions);
+    
+    // Observe elements that should animate
+    document.querySelectorAll('.person-card, .portfolio-item, .message-card:not(.placeholder)').forEach(el => {
+        observer.observe(el);
+    });
 }
 
 // Utility functions
